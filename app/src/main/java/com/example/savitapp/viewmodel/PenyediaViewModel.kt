@@ -27,8 +27,17 @@ object PenyediaViewModel {
             QuickAddViewModel(aplikasiSavit().container.stuffRepository)
         }
 
-        initializer { DetailViewModel(aplikasiSavit().container.stuffRepository) }
-        initializer { EditViewModel(aplikasiSavit().container.stuffRepository) }
+        initializer {
+            DetailViewModel(aplikasiSavit().container.stuffRepository)
+        }
+
+        initializer {
+            EditViewModel(aplikasiSavit().container.stuffRepository)
+        }
+
+        initializer {
+            HistoryViewModel(aplikasiSavit().container.stuffRepository)
+        }
     }
 }
 

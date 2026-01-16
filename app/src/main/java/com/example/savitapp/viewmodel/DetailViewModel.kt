@@ -5,16 +5,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.savitapp.model.History
 import com.example.savitapp.model.Stuff
 import com.example.savitapp.repository.StuffRepository
 import kotlinx.coroutines.launch
-import java.io.IOException
 
 sealed interface DetailUiState {
-    object Loading : DetailUiState
-    data class Success(val stuff: Stuff, val historyList: List<History>) : DetailUiState
+    data class Success(val stuff: Stuff) : DetailUiState
     data class Error(val message: String) : DetailUiState
+    object Loading : DetailUiState
 }
 
 class DetailViewModel(private val repository: StuffRepository) : ViewModel() {
@@ -25,35 +23,32 @@ class DetailViewModel(private val repository: StuffRepository) : ViewModel() {
         viewModelScope.launch {
             detailUiState = DetailUiState.Loading
             try {
-                // 1. Ambil semua barang user, lalu cari yang ID-nya cocok
-                val responseStuff = repository.getAllStuff(userId)
-                val stuff = responseStuff.body()?.find { it.stuffId == stuffId }
+                // TRIK: Panggil getAllStuff (Jalur Dashboard yang Aman)
+                val response = repository.getAllStuff(userId)
 
-                // 2. Ambil History transaksi barang tersebut
-                val responseHistory = repository.getHistory(stuffId)
-                val historyList = responseHistory.body() ?: emptyList()
+                if (response.isSuccessful) {
+                    val allStuff = response.body()
+                    // Cari barang yang ID-nya sama dengan stuffId
+                    val targetStuff = allStuff?.find { it.stuffId == stuffId }
 
-                if (stuff != null) {
-                    detailUiState = DetailUiState.Success(stuff, historyList)
+                    if (targetStuff != null) {
+                        detailUiState = DetailUiState.Success(targetStuff)
+                    } else {
+                        detailUiState = DetailUiState.Error("Barang tidak ditemukan")
+                    }
                 } else {
-                    detailUiState = DetailUiState.Error("Barang tidak ditemukan")
+                    detailUiState = DetailUiState.Error("Gagal memuat: ${response.message()}")
                 }
-            } catch (e: IOException) {
-                detailUiState = DetailUiState.Error("Koneksi Error: ${e.message}")
+            } catch (e: Exception) {
+                detailUiState = DetailUiState.Error("Error: ${e.message}")
             }
         }
     }
 
+    // Fungsi Delete (Biarkan tetap ada)
     fun deleteStuff(stuffId: Int, onSuccess: () -> Unit) {
         viewModelScope.launch {
-            try {
-                val response = repository.deleteStuff(stuffId)
-                if (response.isSuccessful) {
-                    onSuccess()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            try { repository.deleteStuff(stuffId); onSuccess() } catch (e: Exception) {}
         }
     }
 }

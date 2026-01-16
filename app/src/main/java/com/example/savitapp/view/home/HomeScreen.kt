@@ -1,5 +1,6 @@
 package com.example.savitapp.view.home
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,62 +35,61 @@ fun HomeScreen(
     onDetailClick: (Int) -> Unit,
     viewModel: HomeViewModel = viewModel(factory = PenyediaViewModel.Factory)
 ) {
-    // State untuk menyimpan barang yang sedang dipilih untuk Quick Add
-    // Jika null = dialog tertutup. Jika berisi Stuff = dialog terbuka.
+    // 1. Color Palette Sesuai Request
+    val HijauMuda = Color(0xFFA2B29F)
+    val HijauTua = Color(0xFF798777)
+    val Cream = Color(0xFFF8EDE3)
+    val Putih = Color(0xFFFFFFFF)
+    val Hitam = Color(0xFF000000)
+
+    // State untuk Quick Add Dialog
     var selectedStuffForQuickAdd by remember { mutableStateOf<Stuff?>(null) }
 
-    // Load data saat halaman pertama kali dibuka atau userId berubah
+    // Ambil Nama User dari SharedPreferences
+    val context = LocalContext.current
+    val sharedPreferences = remember {
+        context.getSharedPreferences("UserSession", Context.MODE_PRIVATE)
+    }
+    val namaUser = sharedPreferences.getString("NAMA_USER", "User") ?: "User"
+
     LaunchedEffect(userId) {
         viewModel.getStuffList(userId)
     }
 
     Scaffold(
         topBar = {
-            // Custom Header mirip desain "Halo, User"
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFFA3B8A3)) // Warna Hijau Header
-                    .padding(20.dp)
-            ) {
-                Column {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Spacer(modifier = Modifier.width(24.dp))
-
-                        Text(
-                            text = "Halo, User", // Nanti bisa ambil nama dari SharedPreferences
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
+            // 2. TopAppBar Hijau Muda
+            TopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Icon Profil Hitam
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = "Profile",
-                            modifier = Modifier.size(24.dp)
+                            tint = Hitam,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        // Tulisan Halo, [Nama User] Hitam
+                        Text(
+                            text = "Halo, $namaUser",
+                            color = Hitam,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp
                         )
                     }
-                    Text(
-                        text = "Dashboard",
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.Black,
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .padding(top = 10.dp)
-                    )
-                }
-            }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = HijauMuda
+                )
+            )
         },
         floatingActionButton = {
-            // Tombol Tambah Barang (FAB Besar di bawah kanan)
+            // 3. FAB Lingkaran Hijau Muda, Icon (+) Putih
             FloatingActionButton(
                 onClick = onNavigateToAdd,
-                containerColor = Color(0xFF7D9581),
-                contentColor = Color.White,
+                containerColor = HijauMuda,
+                contentColor = Putih,
                 shape = CircleShape,
                 modifier = Modifier.size(60.dp)
             ) {
@@ -99,47 +100,39 @@ fun HomeScreen(
                 )
             }
         },
-        containerColor = Color(0xFFF5EFE6) // Background Krem
+        containerColor = Cream // Background Cream
     ) { innerPadding ->
 
-        // Menangani Status Loading/Error/Success
+        // Handling State (Loading, Error, Success)
         when (val state = viewModel.homeUiState) {
             is HomeUiState.Loading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color(0xFF1B3B28))
+                    CircularProgressIndicator(color = HijauTua)
                 }
             }
             is HomeUiState.Error -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = state.message,
-                        color = Color.Red,
-                        modifier = Modifier.padding(16.dp)
-                    )
+                    Text(text = state.message, color = Color.Red, modifier = Modifier.padding(16.dp))
                 }
             }
             is HomeUiState.Success -> {
+                // 4. LazyColumn Scrollable
                 HomeBody(
                     stuffList = state.stuffList,
                     onItemClick = onDetailClick,
-                    onQuickAddClick = { stuff ->
-                        // Saat tombol + kecil diklik, simpan data barang ke state agar dialog muncul
-                        selectedStuffForQuickAdd = stuff
-                    },
+                    onQuickAddClick = { stuff -> selectedStuffForQuickAdd = stuff },
                     modifier = Modifier.padding(innerPadding)
                 )
             }
         }
 
-        // LOGIKA DIALOG QUICK ADD
-        // Jika variabel selectedStuffForQuickAdd TIDAK null, tampilkan Dialog
+        // Logic Dialog Quick Add (Tetap sama)
         if (selectedStuffForQuickAdd != null) {
             QuickAddDialog(
                 stuff = selectedStuffForQuickAdd!!,
                 onDismiss = { selectedStuffForQuickAdd = null },
                 onSuccess = {
                     selectedStuffForQuickAdd = null
-                    // Refresh data dashboard setelah saldo bertambah
                     viewModel.getStuffList(userId)
                 }
             )
@@ -180,15 +173,20 @@ fun StuffCard(
     onClick: () -> Unit,
     onQuickAddClick: () -> Unit
 ) {
-    // Logika Warna Prioritas
+    // Warna Card: Saya gunakan Putih agar bersih, atau bisa pakai warna prioritas
+    // Jika ingin tetap ada nuansa prioritas, kita bisa pakai border atau background tipis.
+    // Di sini saya pakai logic Prioritas untuk background card agar tetap informatif tapi soft.
     val cardColor = when (stuff.prioritas) {
-        "Penting" -> Color(0xFFA3B8A3) // Hijau Sage
-        "Sedang" -> Color(0xFFFFF59D)  // Kuning
-        "Rendah" -> Color(0xFFFFCC80)  // Orange
-        else -> Color(0xFFA3B8A3)
+        "Penting" -> Color(0xFFA2B29F) // Hijau Muda Palette
+        "Sedang" -> Color(0xFFE8D5B5)  // Varian Cream agak gelap
+        "Rendah" -> Color(0xFFF8EDE3)  // Cream Palette
+        else -> Color.White
     }
 
-    // Hitung Progress (Mencegah pembagian dengan nol)
+    val Hitam = Color(0xFF000000)
+    val Putih = Color(0xFFFFFFFF)
+
+    // Hitung Progress
     val progress = if (stuff.hargaBarang > 0) {
         stuff.uangTerkumpul.toFloat() / stuff.hargaBarang.toFloat()
     } else 0f
@@ -197,69 +195,77 @@ fun StuffCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp), // Rounded Edge Card
         colors = CardDefaults.cardColors(containerColor = cardColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // --- BAGIAN KIRI (Info Barang) ---
+            Column(
+                modifier = Modifier.weight(1f)
             ) {
+                // Pojok Kiri Atas: Tulisan Barang
                 Text(
                     text = stuff.namaBarang,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = Hitam
                 )
 
-                // TOMBOL QUICK ADD (+) KECIL
-                Box(
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Kiri Bawah: Hari Tersisa
+                Text(
+                    text = "Hari tersisa: ${stuff.rencanaHari} hari",
+                    fontSize = 14.sp,
+                    color = Hitam,
+                    fontWeight = FontWeight.Medium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Bawahnya lagi: Linear Progress Indicator
+                LinearProgressIndicator(
+                    progress = progress,
                     modifier = Modifier
-                        .size(36.dp)
-                        .background(Color(0xFFF5EFE6), shape = RoundedCornerShape(8.dp))
-                        .clickable { onQuickAddClick() }, // Klik tombol ini trigger dialog
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Quick Add",
-                        tint = Color.Black
-                    )
-                }
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                    color = Color(0xFF798777), // Hijau Tua untuk bar penuh
+                    trackColor = Color.White.copy(alpha = 0.5f) // Putih transparan untuk track
+                )
+
+                // Info Nominal Kecil (Opsional, biar user tau progress angka)
+                Text(
+                    text = "Rp ${stuff.uangTerkumpul} / Rp ${stuff.hargaBarang}",
+                    fontSize = 12.sp,
+                    color = Hitam,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
 
-            Text(
-                text = "Hari tersisa : ${stuff.rencanaHari} hari",
-                fontSize = 14.sp,
-                color = Color.Black,
-                fontWeight = FontWeight.Medium
-            )
+            Spacer(modifier = Modifier.width(16.dp))
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Progress Bar Putih
-            LinearProgressIndicator(
-                progress = progress,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-                color = Color.White,
-                trackColor = Color.Black.copy(alpha = 0.2f)
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Teks nominal di bawah progress bar
-            Text(
-                text = "Rp ${stuff.uangTerkumpul} / Rp ${stuff.hargaBarang}",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black,
-                modifier = Modifier.align(Alignment.End)
-            )
+            // --- BAGIAN KANAN (Button Quick Add) ---
+            // Button (+) dengan rounded edge
+            Button(
+                onClick = { onQuickAddClick() },
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF798777)), // Hijau Tua
+                contentPadding = PaddingValues(0.dp),
+                modifier = Modifier.size(45.dp) // Ukuran Kotak Button
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Quick Add",
+                    tint = Putih
+                )
+            }
         }
     }
 }

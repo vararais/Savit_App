@@ -9,6 +9,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -27,8 +30,15 @@ fun QuickAddDialog(
     onSuccess: () -> Unit,
     viewModel: QuickAddViewModel = viewModel(factory = PenyediaViewModel.Factory)
 ) {
-    // Rumus Matematika (SRS BRG-02)
-    // Target Harian = (Harga - Terkumpul) / Sisa Hari
+    // 1. Color Palette
+    val HijauMuda = Color(0xFFA2B29F)
+    val HijauTua = Color(0xFF798777)
+    val Cream = Color(0xFFF8EDE3)
+    val Hitam = Color(0xFF000000)
+    val Putih = Color(0xFFFFFFFF)
+    val Merah = Color(0xFFFF0000)
+
+    // Rumus Target Harian
     val kekurangan = if (stuff.hargaBarang > stuff.uangTerkumpul) stuff.hargaBarang - stuff.uangTerkumpul else 0
     val sisaHari = if (stuff.rencanaHari > 0) stuff.rencanaHari else 1
     val targetHarian = kekurangan / sisaHari
@@ -36,59 +46,76 @@ fun QuickAddDialog(
     Dialog(onDismissRequest = onDismiss) {
         Card(
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5EFE6)), // Cream
+            colors = CardDefaults.cardColors(containerColor = Cream), // Background Cream
             elevation = CardDefaults.cardElevation(8.dp)
         ) {
             Column(
-                modifier = Modifier
-                    .padding(20.dp)
-                    .fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Header Hijau
+                // 2. "TopAppBar" Buatan (Header Hijau Muda)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFFA3B8A3), shape = RoundedCornerShape(8.dp))
-                        .padding(12.dp),
+                        .background(HijauMuda)
+                        .padding(vertical = 16.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Quick Add",
-                        fontSize = 20.sp,
+                        text = "Quick Add", // Judul Bold Besar Hitam
+                        fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = Hitam
                     )
                 }
 
-                // Info Target Harian
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "Masukkan Saldo", fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Target Per Hari: Rp $targetHarian",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                }
+                // Konten Dialog
+                Column(
+                    modifier = Modifier
+                        .padding(24.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Teks Informasi
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Masukkan saldo",
+                            fontWeight = FontWeight.Bold,
+                            color = Hitam,
+                            fontSize = 18.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Target harian: Rp $targetHarian",
+                            fontWeight = FontWeight.Bold,
+                            color = Hitam,
+                            fontSize = 16.sp
+                        )
+                    }
 
-                // Input Nominal
-                OutlinedTextField(
-                    value = viewModel.nominalInput,
-                    onValueChange = { viewModel.updateNominal(it) },
-                    label = { Text("Contoh: 100000") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White
+                    // Input Nominal
+                    OutlinedTextField(
+                        value = viewModel.nominalInput,
+                        onValueChange = { viewModel.updateNominal(it) },
+                        label = { Text("Nominal (Rp)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Putih,
+                            unfocusedContainerColor = Putih,
+                            focusedBorderColor = HijauTua,
+                            unfocusedBorderColor = HijauTua,
+                            focusedLabelColor = Hitam,
+                            cursorColor = Hitam
+                        ),
+                        singleLine = true
                     )
-                )
 
-                // Tombol Action
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // 3. Button "Selesai" (Hijau Tua, Teks Putih, Rounded)
                     Button(
                         onClick = {
                             viewModel.saveTransaction(stuff.stuffId) {
@@ -96,18 +123,53 @@ fun QuickAddDialog(
                                 onDismiss()
                             }
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7D9581))
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(50), // Rounded Edge
+                        colors = ButtonDefaults.buttonColors(containerColor = HijauTua)
                     ) {
-                        Text("Selesai", color = Color.White)
+                        Text(
+                            text = "Selesai",
+                            color = Putih,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
                     }
 
-                    OutlinedButton(
+                    // 4. Button "Kembali" (Hijau Muda, Teks Merah Outline Putih, Rounded)
+                    Button(
                         onClick = onDismiss,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(50), // Rounded Edge
+                        colors = ButtonDefaults.buttonColors(containerColor = HijauMuda)
                     ) {
-                        Text("Kembali")
+                        // Trik membuat Outline Text di Compose: Tumpuk 2 Text
+                        Box(contentAlignment = Alignment.Center) {
+                            // Layer 1: Stroke Putih (Outline)
+                            Text(
+                                text = "Kembali",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                style = TextStyle.Default.copy(
+                                    drawStyle = Stroke(
+                                        miter = 10f,
+                                        width = 5f,
+                                        join = StrokeJoin.Round
+                                    )
+                                ),
+                                color = Putih
+                            )
+                            // Layer 2: Fill Merah (Teks Utama)
+                            Text(
+                                text = "Kembali",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Merah
+                            )
+                        }
                     }
                 }
             }

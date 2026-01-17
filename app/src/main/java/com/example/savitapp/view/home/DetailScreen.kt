@@ -1,5 +1,6 @@
 package com.example.savitapp.view.home
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -16,13 +17,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.savitapp.model.Stuff
 import com.example.savitapp.viewmodel.DetailUiState
 import com.example.savitapp.viewmodel.DetailViewModel
 import com.example.savitapp.viewmodel.PenyediaViewModel
@@ -42,41 +43,50 @@ fun DetailScreen(
     val Cream = Color(0xFFF8EDE3)
     val Hitam = Color(0xFF000000)
     val Putih = Color(0xFFFFFFFF)
-    val Merah = Color(0xFFFF0000)
+    val Merah = Color(0xFFA00000)
+
+    val context = LocalContext.current // Butuh context untuk Toast
 
     LaunchedEffect(Unit) {
         viewModel.getStuffDetail(userId, stuffId)
     }
 
-    // State untuk Dialog Konfirmasi Hapus
+    // State Dialog Hapus
     val showDeleteDialog = remember { mutableStateOf(false) }
 
+    // --- LOGIKA POP-UP KONFIRMASI HAPUS ---
     if (showDeleteDialog.value) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog.value = false },
-            title = { Text("Hapus Barang?") },
-            text = { Text("Barang ini akan dihapus permanen.") },
+            containerColor = Cream,
+            title = { Text("Konfirmasi Hapus", fontWeight = FontWeight.Bold, color = Hitam) },
+            text = { Text("Apakah anda yakin ingin menghapus barang ini secara permanen?", color = Hitam) },
             confirmButton = {
                 Button(
                     onClick = {
+                        // Panggil ViewModel untuk delete ke Database
                         viewModel.deleteStuff(stuffId) {
+                            // --- BLOK INI JALAN KALAU SUKSES DELETE ---
                             showDeleteDialog.value = false
+                            // Tampilkan Toast sesuai SRS
+                            Toast.makeText(context, "Barang berhasil di delete", Toast.LENGTH_SHORT).show()
                             navigateBack()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Merah)
-                ) { Text("Hapus", color = Putih) }
+                ) { Text("Ya, Hapus", color = Putih, fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog.value = false }) { Text("Batal", color = Hitam) }
+                TextButton(onClick = { showDeleteDialog.value = false }) {
+                    Text("Batal", color = Hitam)
+                }
             }
         )
     }
 
     Scaffold(
-        containerColor = Cream // Background Cream
+        containerColor = Cream
     ) { innerPadding ->
-
         val scrollState = rememberScrollState()
 
         when (val state = viewModel.detailUiState) {
@@ -89,7 +99,6 @@ fun DetailScreen(
             is DetailUiState.Success -> {
                 val stuff = state.stuff
 
-                // Hitung Persentase
                 val percentage = if (stuff.hargaBarang > 0) {
                     ((stuff.uangTerkumpul.toDouble() / stuff.hargaBarang.toDouble()) * 100).toInt()
                 } else 0
@@ -100,23 +109,23 @@ fun DetailScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(innerPadding)
-                        .verticalScroll(scrollState), // Agar bisa di-scroll
+                        .padding(bottom = innerPadding.calculateBottomPadding())
+                        .verticalScroll(scrollState),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // 2. Shape Kotak Setengah Atas (Hijau Muda)
+                    // Header Hijau
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(320.dp) // Tinggi area atas
-                            .clip(RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 40.dp)) // Rounded bawah
-                            .background(HijauMuda),
-                        contentAlignment = Alignment.Center
+                            .clip(RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp))
+                            .background(HijauMuda)
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
-                            modifier = Modifier.padding(20.dp)
+                            modifier = Modifier
+                                .statusBarsPadding()
+                                .padding(top = 20.dp, bottom = 40.dp, start = 20.dp, end = 20.dp)
                         ) {
                             Text(
                                 text = "Hore , Progress Kamu sudah $percentage%",
@@ -125,75 +134,56 @@ fun DetailScreen(
                                 color = Hitam,
                                 textAlign = TextAlign.Center
                             )
-
                             Spacer(modifier = Modifier.height(20.dp))
-
-                            // Linear Progress Indicator
                             LinearProgressIndicator(
-                                progress = progressFloat,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(20.dp)
-                                    .clip(RoundedCornerShape(10.dp)),
-                                color = HijauTua, // Warna Bar
-                                trackColor = Putih // Warna Track
+                                progress = { progressFloat },
+                                modifier = Modifier.fillMaxWidth().height(20.dp).clip(RoundedCornerShape(10.dp)),
+                                color = HijauTua,
+                                trackColor = Putih
                             )
-
                             Spacer(modifier = Modifier.height(16.dp))
-
-                            Text(
-                                text = "Dana terkumpul",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Hitam
-                            )
-                            Text(
-                                text = "Rp ${stuff.uangTerkumpul}",
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Hitam
-                            )
+                            Text(text = "Dana terkumpul", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Hitam)
+                            Text(text = "Rp ${stuff.uangTerkumpul}", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Hitam)
                         }
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // 3. Button "Edit barang" (Hijau Tua, Rounded, Icon Edit)
+                    // --- BUTTON EDIT ---
                     Button(
                         onClick = { onEditClick(stuffId) },
                         modifier = Modifier
-                            .fillMaxWidth(0.8f) // Lebar 80% dari layar
-                            .height(50.dp),
-                        shape = RoundedCornerShape(50),
+                            .fillMaxWidth(0.9f)
+                            .height(130.dp), // Saya kembalikan ke 60dp biar rapi
+                        shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = HijauTua)
                     ) {
                         Icon(imageVector = Icons.Default.Edit, contentDescription = null, tint = Putih)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Edit barang", color = Putih, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text("Edit barang", color = Putih, fontSize = 30.sp, fontWeight = FontWeight.Bold)
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // 4. Button "Hapus" (Merah, Rounded, Icon Hapus)
+                    // --- BUTTON HAPUS ---
                     Button(
-                        onClick = { showDeleteDialog.value = true },
+                        onClick = { showDeleteDialog.value = true }, // Trigger Dialog Konfirmasi
                         modifier = Modifier
-                            .fillMaxWidth(0.8f)
-                            .height(50.dp),
-                        shape = RoundedCornerShape(50),
+                            .fillMaxWidth(0.9f)
+                            .height(130.dp), // Saya kembalikan ke 60dp biar rapi
+                        shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Merah)
                     ) {
                         Icon(imageVector = Icons.Default.Delete, contentDescription = null, tint = Putih)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Hapus", color = Putih, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text("Hapus", color = Putih, fontSize = 30.sp, fontWeight = FontWeight.Bold)
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // 5. Textbox Statis (Hijau Muda, Tulisan Hitam)
-                    // Kita pakai Column container untuk menampung info
+                    // Info Box Container
                     Column(
-                        modifier = Modifier.fillMaxWidth(0.9f), // Lebar 90%
+                        modifier = Modifier.fillMaxWidth(0.9f),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         StaticInfoBox("Nama Barang", stuff.namaBarang, HijauMuda, Hitam)
@@ -203,47 +193,41 @@ fun DetailScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // 6. Button Kembali (Hijau Tua, Merah Outline Putih)
+                    // Button Kembali
                     Button(
                         onClick = navigateBack,
                         modifier = Modifier
-                            .fillMaxWidth(0.8f)
-                            .height(50.dp),
-                        shape = RoundedCornerShape(50),
+                            .fillMaxWidth(0.9f)
+                            .height(60.dp),
+                        shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = HijauTua)
                     ) {
-                        // Trik Outline Text
                         Box(contentAlignment = Alignment.Center) {
                             Text(
                                 text = "Kembali",
-                                fontSize = 16.sp,
+                                fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 style = TextStyle.Default.copy(
-                                    drawStyle = Stroke(
-                                        miter = 10f,
-                                        width = 5f,
-                                        join = StrokeJoin.Round
-                                    )
+                                    drawStyle = Stroke(miter = 10f, width = 5f, join = StrokeJoin.Round)
                                 ),
-                                color = Putih // Outline Putih
+                                color = Putih
                             )
                             Text(
                                 text = "Kembali",
-                                fontSize = 16.sp,
+                                fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Merah // Isi Merah
+                                color = Merah
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(30.dp)) // Jarak bawah agar tidak mepet
+                    Spacer(modifier = Modifier.height(30.dp))
                 }
             }
         }
     }
 }
 
-// Komponen Custom untuk Textbox Statis
 @Composable
 fun StaticInfoBox(label: String, value: String, bgColor: Color, textColor: Color) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -256,14 +240,14 @@ fun StaticInfoBox(label: String, value: String, bgColor: Color, textColor: Color
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(bgColor, RoundedCornerShape(12.dp)) // Background Hijau Muda
+                .background(bgColor, RoundedCornerShape(12.dp))
                 .padding(16.dp)
         ) {
             Text(
                 text = value,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = textColor // Teks Hitam
+                color = textColor
             )
         }
     }
